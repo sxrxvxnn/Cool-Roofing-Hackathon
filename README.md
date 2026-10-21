@@ -8,6 +8,7 @@
   <img src="https://img.shields.io/badge/Streamlit-1.28-red?style=for-the-badge&logo=streamlit&logoColor=white"/>
   <img src="https://img.shields.io/badge/Scikit--Learn-1.3-yellow?style=for-the-badge&logo=scikit-learn&logoColor=white"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge"/>
+  <img src="https://github.com/sxrxvxnn/Cool-Roofing-Hackathon/actions/workflows/ci.yml/badge.svg" alt="CI"/>
 </p>
 
 <p align="center">

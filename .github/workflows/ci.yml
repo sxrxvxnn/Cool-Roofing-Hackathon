@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check imports and models load
+        run: |
+          python -c "
+          import joblib, os
+          models = [
+            'models/model_cost.joblib',
+            'models/model_temp_drop.joblib',
+            'models/model_units_saved.joblib',
+            'models/model_high_rating.joblib',
+            'models/model_referral.joblib',
+          ]
+          for path in models:
+            m = joblib.load(path)
+            print(f'OK: {path}')
+          print('All 5 models loaded successfully.')
+          "
+
+      - name: Verify dataset
+        run: |
+          python -c "
+          import pandas as pd
+          df = pd.read_csv('cool_roofing_data.csv')
+          assert len(df) >= 2000, f'Expected 2000+ rows, got {len(df)}'
+          print(f'Dataset OK: {len(df)} rows, {len(df.columns)} columns')
+          "
