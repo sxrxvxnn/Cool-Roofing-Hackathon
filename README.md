@@ -1,5 +1,5 @@
 # Cool Roofing Cost & Impact Predictor
-**Smart India Hackathon 2024 | Smart Infrastructure & Green Buildings**
+**Smart Infrastructure & Green Buildings**
 
 A machine learning system that predicts **5 outcomes** of a cool roofing installation from **9 pre-installation inputs** — before a single tile is placed.
 

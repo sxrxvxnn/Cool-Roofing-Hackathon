@@ -1,5 +1,5 @@
 # Cool Roofing — Quick Reference Cheat Sheet
-**SIH 2024 | All 12 Slides + Key Terms**
+**All 12 Slides + Key Terms**
 
 ---
 
