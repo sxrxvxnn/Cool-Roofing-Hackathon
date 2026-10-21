@@ -1,8 +1,10 @@
-# 🏠 Cool Roofing Cost & Impact Predictor
+<p align="center">
+  <img src="assets/header.svg" alt="Cool Roofing Predictor" width="100%"/>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white"/>
-  <img src="https://img.shields.io/badge/XGBoost-2.0-orange?style=for-the-badge&logo=xgboost&logoColor=white"/>
+  <img src="https://img.shields.io/badge/XGBoost-2.0-orange?style=for-the-badge&logoColor=white"/>
   <img src="https://img.shields.io/badge/Streamlit-1.28-red?style=for-the-badge&logo=streamlit&logoColor=white"/>
   <img src="https://img.shields.io/badge/Scikit--Learn-1.3-yellow?style=for-the-badge&logo=scikit-learn&logoColor=white"/>
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge"/>
@@ -34,6 +36,7 @@
 
 - [The Problem](#-the-problem)
 - [How It Works](#-how-it-works)
+- [Model Selection](#-model-selection)
 - [Dataset](#-dataset)
 - [Models](#-models)
 - [App — 5 Pages](#-app--5-pages)
@@ -80,6 +83,35 @@ Building owners commit **₹1L to ₹18L** on cool roofing installations with:
 
 ---
 
+## 🏆 Model Selection
+
+<p align="center">
+  <img src="assets/model_comparison.svg" alt="Model Comparison" width="100%"/>
+</p>
+
+### Why XGBoost for Installation Cost?
+
+Cost distribution is **right-skewed** (₹55K–₹50.5L) with **non-linear** interactions between quality, size, and location. XGBoost builds 2,000 trees sequentially — each one corrects the errors of the previous — handling these patterns better than a single-pass algorithm.
+
+| Algorithm | Cost R² | Cost MAE | Decision |
+|:---|:---:|:---:|:---:|
+| **XGBoost** | **0.9843** | **₹69,426** | ✅ Selected |
+| Random Forest | 0.9797 | ₹72,100 | ❌ |
+| Linear Regression | ~0.82 | ~₹2,10,000 | ❌ Too simple |
+| Mean (baseline) | 0.000 | ₹6,08,878 | ❌ |
+
+**XGBoost is 8.8× better than the baseline and +0.46 R² points over Random Forest.**
+
+### Why Random Forest for Everything Else?
+
+Temperature drop, units saved, rating, and referral targets are **smoother and less skewed** — Random Forest handles these well without the extra tuning complexity of XGBoost. It also natively supports `class_weight='balanced'` for the imbalanced classifier tasks.
+
+### Why Not Deep Learning?
+
+2,472 rows is too small for neural networks. Ensemble tree methods consistently outperform neural nets on **tabular data at this scale** — this is well-established in the ML literature.
+
+---
+
 ## 📊 Dataset
 
 <details>
@@ -112,21 +144,18 @@ Building owners commit **₹1L to ₹18L** on cool roofing installations with:
 <details>
 <summary><b>XGBoost — Installation Cost</b></summary>
 
-Chosen because cost is **right-skewed** (₹55K–₹50.5L) and **non-linear** across quality × size × location interactions.
-
 ```python
 XGBRegressor(
-    n_estimators=2000,
-    max_depth=5,
-    learning_rate=0.06,
-    reg_lambda=0.5,
-    subsample=0.9
+    n_estimators=2000,    # 2000 sequential correction trees
+    max_depth=5,          # prevents over-complex trees
+    learning_rate=0.06,   # small step = stable, no overcorrecting
+    reg_lambda=0.5,       # L2 penalty prevents overfitting
+    subsample=0.9         # 90% row sampling per tree = diversity
 )
 ```
 
-- Beats Random Forest by **+0.46 R² points** on held-out test set
-- Training R² = 0.997 · Test R² = 0.9843 → healthy 1.3% gap (not overfit)
-- MAE ₹69,426 vs baseline MAE ₹6,08,878 → **8.8× better**
+- Training R² = 0.997 · Test R² = 0.9843 → **1.3% gap** (healthy, not overfit)
+- MAE ₹69,426 vs baseline ₹6,08,878 → **8.8× improvement**
 
 </details>
 
@@ -135,20 +164,19 @@ XGBRegressor(
 
 ```python
 RandomForestRegressor / RandomForestClassifier(
-    n_estimators=300,
-    max_depth=12,
-    class_weight='balanced'   # classifiers only
+    n_estimators=300,         # 300 independent trees
+    max_depth=12,             # captures complex patterns
+    class_weight='balanced'   # handles class imbalance (classifiers only)
 )
 ```
 
-Top feature importances (make physical sense → no data leakage):
+Top feature importances:
 
-| Model | Top Feature | Importance |
-|---|---|---|
-| Temp Drop | avg_roof_temp_before | ~0.40 |
-| Units Saved | avg_units_before | ~0.44 |
-| High Rating | avg_units_before | ~0.18 |
-| Referral | num_ac_units | ~0.15 |
+| Model | Top Feature | Importance | Why it makes sense |
+|---|---|---|---|
+| Temp Drop | avg_roof_temp_before | ~0.40 | Higher start → bigger drop |
+| Units Saved | avg_units_before | ~0.44 | More usage → more savings |
+| High Rating | avg_units_before | ~0.18 | Visible savings → happy customers |
 
 </details>
 
@@ -202,6 +230,9 @@ Cool-Roofing-Hackathon/
 ├── cool_roofing.ipynb        # EDA + training notebook
 ├── cool_roofing_data.csv     # Dataset (2,500 rows)
 ├── requirements.txt
+├── assets/
+│   ├── header.svg            # Animated header banner
+│   └── model_comparison.svg  # Animated model comparison chart
 ├── models/
 │   ├── model_cost.joblib           # XGBoost — R² 0.9843
 │   ├── model_temp_drop.joblib      # RF — R² 0.935
@@ -212,10 +243,9 @@ Cool-Roofing-Hackathon/
 ├── templates/                # FastAPI HTML templates
 ├── README.md
 ├── QUICK_REFERENCE.md        # Slide cheat sheet + glossary
-└── docs/
-    ├── README.pdf
-    ├── PRESENTATION_NOTES.pdf
-    └── QUICK_REFERENCE.pdf
+├── README.pdf
+├── PRESENTATION_NOTES.pdf
+└── QUICK_REFERENCE.pdf
 ```
 
 ---
@@ -226,7 +256,7 @@ Cool-Roofing-Hackathon/
 <tr><td><b>Cost R² (test set)</b></td><td>0.9843</td></tr>
 <tr><td><b>Cost MAE</b></td><td>₹69,426</td></tr>
 <tr><td><b>Baseline MAE</b></td><td>₹6,08,878</td></tr>
-<tr><td><b>MAE improvement over baseline</b></td><td>8.8×</td></tr>
+<tr><td><b>MAE improvement over baseline</b></td><td><b>8.8×</b></td></tr>
 <tr><td><b>Batch prediction speed</b></td><td>2,500 rows / 0.23s</td></tr>
 <tr><td><b>Live example error</b></td><td>0.94%</td></tr>
 <tr><td><b>Average installation cost</b></td><td>₹10.9L</td></tr>

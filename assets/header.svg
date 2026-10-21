@@ -1,0 +1,78 @@
+<svg viewBox="0 0 800 160" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117"/>
+      <stop offset="100%" style="stop-color:#161b22"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:0"/>
+      <stop offset="50%" style="stop-color:#f59e0b;stop-opacity:0.6"/>
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="160" fill="url(#bg)" rx="12"/>
+  <rect x="1" y="1" width="798" height="158" fill="none" stroke="#30363d" stroke-width="1" rx="12"/>
+
+  <!-- Animated glow line -->
+  <rect x="-200" y="78" width="400" height="2" fill="url(#glow)" opacity="0.8">
+    <animate attributeName="x" from="-400" to="800" dur="2.5s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1"/>
+  </rect>
+
+  <!-- Icon pulse circle -->
+  <circle cx="72" cy="80" r="32" fill="#f59e0b" opacity="0.12">
+    <animate attributeName="r" values="30;36;30" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.12;0.06;0.12" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <text x="72" y="88" font-size="28" text-anchor="middle">🏠</text>
+
+  <!-- Main title — fade in -->
+  <text x="150" y="68" fill="#e6edf3" font-size="22" font-weight="bold" opacity="0">
+    Cool Roofing Predictor
+    <animate attributeName="opacity" from="0" to="1" dur="0.8s" begin="0.2s" fill="freeze"/>
+  </text>
+
+  <!-- Subtitle — fade in delayed -->
+  <text x="150" y="94" fill="#8b949e" font-size="13" opacity="0">
+    5 ML predictions · 9 inputs · &lt;1 second
+    <animate attributeName="opacity" from="0" to="1" dur="0.8s" begin="0.6s" fill="freeze"/>
+  </text>
+
+  <!-- Stat pills -->
+  <!-- R² pill -->
+  <rect x="150" y="110" width="108" height="26" fill="#f59e0b18" rx="13" stroke="#f59e0b40" stroke-width="1" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.0s" fill="freeze"/>
+  </rect>
+  <text x="204" y="127" fill="#f59e0b" font-size="11" font-weight="bold" text-anchor="middle" opacity="0">
+    R² = 0.9843
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.0s" fill="freeze"/>
+  </text>
+
+  <!-- MAE pill -->
+  <rect x="268" y="110" width="116" height="26" fill="#3b82f618" rx="13" stroke="#3b82f640" stroke-width="1" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.2s" fill="freeze"/>
+  </rect>
+  <text x="326" y="127" fill="#3b82f6" font-size="11" font-weight="bold" text-anchor="middle" opacity="0">
+    MAE ₹69,426
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.2s" fill="freeze"/>
+  </text>
+
+  <!-- Speed pill -->
+  <rect x="394" y="110" width="126" height="26" fill="#22c55e18" rx="13" stroke="#22c55e40" stroke-width="1" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.4s" fill="freeze"/>
+  </rect>
+  <text x="457" y="127" fill="#22c55e" font-size="11" font-weight="bold" text-anchor="middle" opacity="0">
+    2500 rows/0.23s
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.4s" fill="freeze"/>
+  </text>
+
+  <!-- Error pill -->
+  <rect x="530" y="110" width="106" height="26" fill="#a855f718" rx="13" stroke="#a855f740" stroke-width="1" opacity="0">
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.6s" fill="freeze"/>
+  </rect>
+  <text x="583" y="127" fill="#a855f7" font-size="11" font-weight="bold" text-anchor="middle" opacity="0">
+    0.94% error
+    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="1.6s" fill="freeze"/>
+  </text>
+</svg>
