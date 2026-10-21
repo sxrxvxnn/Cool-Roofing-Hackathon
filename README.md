@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://share.streamlit.io/deploy?repository=sxrxvxnn/Cool-Roofing-Hackathon&branch=main&mainModule=app.py">
+  <a href="https://cool-roofing-hackathon-4dpu4uz5vqyrh8nkyoxzex.streamlit.app/">
     <img src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg" alt="Open in Streamlit"/>
   </a>
 </p>
@@ -257,10 +257,8 @@ Cool-Roofing-Hackathon/
 │   └── features_*.joblib           # Feature lists + encoders
 ├── templates/                # FastAPI HTML templates
 ├── README.md
-├── QUICK_REFERENCE.md        # Slide cheat sheet + glossary
-├── README.pdf
-├── PRESENTATION_NOTES.pdf
-└── QUICK_REFERENCE.pdf
+├── CONTRIBUTING.md
+└── LICENSE
 ```
 
 ---
