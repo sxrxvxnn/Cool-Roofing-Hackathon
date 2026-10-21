@@ -3,6 +3,12 @@
 </p>
 
 <p align="center">
+  <a href="https://share.streamlit.io/deploy?repository=sxrxvxnn/Cool-Roofing-Hackathon&branch=main&mainModule=app.py">
+    <img src="https://static.streamlit.io/badges/streamlit_badge_black_white.svg" alt="Open in Streamlit"/>
+  </a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/XGBoost-2.0-orange?style=for-the-badge&logoColor=white"/>
   <img src="https://img.shields.io/badge/Streamlit-1.28-red?style=for-the-badge&logo=streamlit&logoColor=white"/>
@@ -14,6 +20,14 @@
 <p align="center">
   <b>Predict 5 outcomes of a cool roofing installation — before a single tile is placed.</b><br/>
   9 inputs → 5 ML predictions in under 1 second.
+</p>
+
+---
+
+## 🎬 Demo
+
+<p align="center">
+  <img src="assets/cool_roofing_demo.gif" alt="App Demo" width="80%"/>
 </p>
 
 ---
