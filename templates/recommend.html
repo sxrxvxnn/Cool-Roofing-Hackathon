@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% set page = "recommend" %}
+{% block title %}Recommend — Cool Roofing{% endblock %}
+{% block content %}
+<h2 class="fw-bold mb-1" style="color:var(--primary)">Best Configuration Recommender</h2>
+<p class="text-muted mb-4 small">Scores every compatible method × quality combo and ranks by weighted cost-efficiency score. Tariff is for financial estimate only — not in the dataset.</p>
+
+<div class="row g-4">
+  <!-- ── Form ── -->
+  <div class="col-12 col-lg-4">
+    <div class="card p-4">
+      <div class="section-title">Building Details</div>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-lg-12">
+          <label class="form-label small fw-semibold">Location Type <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="r_location_type">
+            {% for v in location_types %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-12">
+          <label class="form-label small fw-semibold">Existing Roof Type <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="r_roofing_type">
+            {% for v in roofing_types %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">Size (sq ft)</label>
+          <input type="number" class="form-control form-control-sm" id="r_building_size" value="1200" min="100" max="10000">
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">Age (yrs)</label>
+          <input type="number" class="form-control form-control-sm" id="r_building_age" value="10" min="0" max="100">
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">AC Units</label>
+          <input type="number" class="form-control form-control-sm" id="r_num_ac_units" value="3" min="0" max="50">
+        </div>
+        <div class="col-12 col-sm-6 col-lg-12">
+          <label class="form-label small fw-semibold">Avg Roof Temp Before (°C)</label>
+          <input type="number" class="form-control form-control-sm" id="r_avg_roof_temperature_before" value="55" step="0.5" min="20" max="85">
+        </div>
+        <div class="col-12 col-sm-6 col-lg-12">
+          <label class="form-label small fw-semibold">Monthly Electricity (kWh)</label>
+          <input type="number" class="form-control form-control-sm" id="r_avg_units_before" value="250" min="0" max="2000">
+        </div>
+      </div>
+
+      <hr class="my-3">
+      <div class="section-title">Financial Settings <span class="badge bg-secondary fw-normal" style="font-size:.7rem">not in dataset</span></div>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6 col-lg-12">
+          <label class="form-label small fw-semibold">Electricity Tariff (₹/kWh)</label>
+          <input type="number" class="form-control form-control-sm" id="r_tariff" value="7" step="0.5" min="1" max="20">
+          <div class="form-text">For annual savings & payback calc only</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mt-4" id="rec-btn" onclick="runRecommend()">🏆 Find Best Configuration</button>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="col-12 col-lg-8">
+    <!-- Top recommendation -->
+    <div id="top-rec" class="card p-4 mb-3" style="display:none; border-left:4px solid var(--accent)">
+      <div class="section-title">🏆 Top Recommendation</div>
+      <div class="row g-3" id="top-cards"></div>
+    </div>
+
+    <!-- Ranked table -->
+    <div class="card p-3" id="rank-card" style="display:none">
+      <div class="section-title">All Options Ranked</div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0" style="min-width:700px">
+          <thead>
+            <tr>
+              <th>#</th><th>Method</th><th>Quality</th>
+              <th>Cost (₹)</th><th>Temp Drop</th><th>Units Saved</th>
+              <th>P(Rating)</th><th>P(Referral)</th>
+              <th>Annual Savings</th><th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="rank-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="placeholder" class="card p-5 text-center text-muted">
+      <div style="font-size:3rem">🏆</div>
+      <p class="mt-2 mb-0">Fill the form and click Find Best Configuration</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function runRecommend() {
+  const btn = document.getElementById('rec-btn');
+  setLoading(btn, true);
+
+  const tariff = parseFloat(document.getElementById('r_tariff').value) || 7;
+  const body = {
+    location_type:                 document.getElementById('r_location_type').value,
+    roofing_type:                  document.getElementById('r_roofing_type').value,
+    building_size:                 parseFloat(document.getElementById('r_building_size').value),
+    building_age:                  parseFloat(document.getElementById('r_building_age').value),
+    num_ac_units:                  parseFloat(document.getElementById('r_num_ac_units').value),
+    avg_roof_temperature_before:   parseFloat(document.getElementById('r_avg_roof_temperature_before').value),
+    avg_units_before:              parseFloat(document.getElementById('r_avg_units_before').value),
+    cool_roofing_method:           'basic_coating',  // placeholder — backend iterates all methods
+    cool_roofing_quality:          'basic',           // placeholder
+  };
+
+  try {
+    const r = await axios.post(`/api/recommend?tariff=${tariff}`, body);
+    const recs = r.data.recommendations;
+    const best = recs[0];
+
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('top-rec').style.display = '';
+    document.getElementById('rank-card').style.display = '';
+
+    document.getElementById('top-cards').innerHTML = [
+      ['Method',         best.method],
+      ['Quality',        best.quality],
+      ['Cost',           '₹' + best.cost_inr.toLocaleString('en-IN')],
+      ['Score',          best.score.toFixed(4)],
+      ['Monthly Savings','₹' + Math.round(best.units_saved_kwh * tariff).toLocaleString('en-IN')],
+      ['Annual Savings', '₹' + best.annual_savings_inr.toLocaleString('en-IN')],
+      ['Payback',        best.cost_inr > 0 && best.annual_savings_inr > 0
+                           ? (best.cost_inr / best.annual_savings_inr).toFixed(1) + ' yrs' : 'N/A'],
+    ].map(([l,v]) => `<div class="col-6 col-sm-4"><div class="result-badge h-100">
+      <div class="small text-muted">${l}</div><div class="val">${v}</div></div></div>`).join('');
+
+    document.getElementById('rank-body').innerHTML = recs.map((rec, i) =>
+      `<tr class="${i===0?'table-success':''}">
+        <td class="fw-bold">${i+1}</td>
+        <td>${rec.method}</td><td>${rec.quality}</td>
+        <td>₹${rec.cost_inr.toLocaleString('en-IN')}</td>
+        <td>${rec.temp_drop_c}°C</td>
+        <td>${rec.units_saved_kwh} kWh</td>
+        <td>${(rec.high_rating_prob*100).toFixed(1)}%</td>
+        <td>${(rec.referral_prob*100).toFixed(1)}%</td>
+        <td>₹${rec.annual_savings_inr.toLocaleString('en-IN')}</td>
+        <td><strong>${rec.score.toFixed(4)}</strong></td>
+      </tr>`
+    ).join('');
+
+  } catch(e) {
+    showToast('Error: ' + (e.response?.data?.detail || e.message), 'danger');
+  } finally { setLoading(btn, false); }
+}
+</script>
+{% endblock %}

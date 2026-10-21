@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% set page = "predict" %}
+{% block title %}Predict — Cool Roofing{% endblock %}
+{% block content %}
+<h2 class="fw-bold mb-1" style="color:var(--primary)">Single Building Prediction</h2>
+<p class="text-muted mb-4 small">Enter building details to get all 5 predictions. Tariff is used only for financial estimates — not in the dataset.</p>
+
+<div class="row g-4">
+  <!-- ── Form ── -->
+  <div class="col-12 col-lg-5">
+    <div class="card p-4">
+      <div class="section-title">Building Details</div>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Location Type <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="location_type">
+            {% for v in location_types %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Roof Type <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="roofing_type">
+            {% for v in roofing_types %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Cool Roofing Method <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="cool_roofing_method">
+            {% for v in roofing_methods %}<option>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Quality Level <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="cool_roofing_quality">
+            {% for v in quality_levels %}<option {% if v=='intermediate' %}selected{% endif %}>{{ v }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">Size (sq ft)</label>
+          <input type="number" class="form-control form-control-sm" id="building_size" value="1200" min="100" max="10000">
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">Age (years)</label>
+          <input type="number" class="form-control form-control-sm" id="building_age" value="10" min="0" max="100">
+        </div>
+        <div class="col-4">
+          <label class="form-label small fw-semibold">AC Units</label>
+          <input type="number" class="form-control form-control-sm" id="num_ac_units" value="3" min="0" max="50">
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Avg Roof Temp Before (°C)</label>
+          <input type="number" class="form-control form-control-sm" id="avg_roof_temperature_before" value="55" step="0.5" min="20" max="85">
+          <div class="form-text">Pre-installation measurement</div>
+        </div>
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Monthly Electricity (kWh)</label>
+          <input type="number" class="form-control form-control-sm" id="avg_units_before" value="250" min="0" max="2000">
+          <div class="form-text">Baseline before installation</div>
+        </div>
+      </div>
+
+      <hr class="my-3">
+      <div class="section-title">Financial Settings <span class="badge bg-secondary fw-normal" style="font-size:.7rem">not in dataset</span></div>
+      <div class="row g-3">
+        <div class="col-12 col-sm-6">
+          <label class="form-label small fw-semibold">Electricity Tariff (₹/kWh)</label>
+          <input type="number" class="form-control form-control-sm" id="tariff" value="7" step="0.5" min="1" max="20">
+          <div class="form-text">Used only for savings estimate</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary w-100 mt-4" id="pred-btn" onclick="runPredict()">🔮 Predict All 5 Outcomes</button>
+    </div>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="col-12 col-lg-7">
+    <div id="results" style="display:none">
+      <div class="card p-4 mb-3">
+        <div class="section-title">Regression Predictions</div>
+        <div class="row g-3">
+          <div class="col-12 col-sm-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">💰 Installation Cost</div>
+              <div class="val" id="r-cost">—</div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">🌡️ Temp Drop</div>
+              <div class="val" id="r-temp">—</div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">⚡ Units Saved / mo</div>
+              <div class="val" id="r-units">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4 mb-3">
+        <div class="section-title">Classification Predictions</div>
+        <div class="row g-3">
+          <div class="col-12 col-sm-6">
+            <div class="result-badge h-100">
+              <div class="small text-muted">⭐ P(High Rating ≥ 4)</div>
+              <div class="val" id="r-rating">—</div>
+              <div id="r-rating-bar" class="mt-2" style="height:6px;border-radius:3px;background:#e0e0e0">
+                <div id="r-rating-fill" style="height:100%;border-radius:3px;background:var(--accent);width:0;transition:.4s"></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-6">
+            <div class="result-badge h-100">
+              <div class="small text-muted">📣 P(Customer Referral)</div>
+              <div class="val" id="r-referral">—</div>
+              <div class="mt-2" style="height:6px;border-radius:3px;background:#e0e0e0">
+                <div id="r-referral-fill" style="height:100%;border-radius:3px;background:#2196F3;width:0;transition:.4s"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-4">
+        <div class="section-title">Financial Estimate <span class="text-muted small fw-normal">(based on tariff entered above)</span></div>
+        <div class="row g-3">
+          <div class="col-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">Monthly Savings</div>
+              <div class="val" id="r-monthly">—</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">Annual Savings</div>
+              <div class="val" id="r-annual">—</div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="result-badge h-100">
+              <div class="small text-muted">Payback Period</div>
+              <div class="val" id="r-payback">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="placeholder" class="card p-5 text-center text-muted h-100 d-flex align-items-center justify-content-center flex-column">
+      <div style="font-size:3rem">🔮</div>
+      <p class="mt-2 mb-0">Fill in the form and click Predict</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function runPredict() {
+  const btn = document.getElementById('pred-btn');
+  setLoading(btn, true);
+
+  const ids = ['location_type','building_size','building_age','num_ac_units',
+               'roofing_type','cool_roofing_method','cool_roofing_quality',
+               'avg_roof_temperature_before','avg_units_before'];
+  const body = {};
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    const v = el.value;
+    body[id] = isNaN(parseFloat(v)) || el.tagName === 'SELECT' ? v : parseFloat(v);
+  });
+  const tariff = parseFloat(document.getElementById('tariff').value) || 7;
+
+  try {
+    const r = await axios.post(`/api/predict?tariff=${tariff}`, body);
+    const p = r.data.predictions, f = r.data.financial;
+
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('results').style.display = '';
+
+    document.getElementById('r-cost').textContent    = '₹' + p.cost_inr.toLocaleString('en-IN');
+    document.getElementById('r-temp').textContent    = p.temp_drop_c + '°C';
+    document.getElementById('r-units').textContent   = p.units_saved_kwh + ' kWh';
+
+    const ratingPct = (p.high_rating_prob * 100).toFixed(1) + '%';
+    const refPct    = (p.referral_prob * 100).toFixed(1) + '%';
+    document.getElementById('r-rating').textContent   = ratingPct;
+    document.getElementById('r-referral').textContent = refPct;
+    document.getElementById('r-rating-fill').style.width   = ratingPct;
+    document.getElementById('r-referral-fill').style.width = refPct;
+
+    document.getElementById('r-monthly').textContent  = '₹' + f.monthly_savings_inr.toLocaleString('en-IN');
+    document.getElementById('r-annual').textContent   = '₹' + f.annual_savings_inr.toLocaleString('en-IN');
+    document.getElementById('r-payback').textContent  = f.payback_years ? f.payback_years + ' yrs' : 'N/A';
+
+  } catch(e) {
+    showToast('Prediction failed: ' + (e.response?.data?.detail || e.message), 'danger');
+  } finally { setLoading(btn, false); }
+}
+</script>
+{% endblock %}

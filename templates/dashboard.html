@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% set page = "dashboard" %}
+{% block title %}Dashboard — Cool Roofing{% endblock %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/plotly.js@2.27.1/dist/plotly.min.js"></script>
+{% endblock %}
+{% block content %}
+<h2 class="fw-bold mb-1" style="color:var(--primary)">Dataset Analysis Dashboard</h2>
+<p class="text-muted mb-3">Live charts from cool_roofing_data.csv</p>
+
+<!-- KPI row -->
+<div id="kpi-row" class="row g-3 mb-4">
+  <div class="col-12 text-center text-muted py-3"><span class="spinner-border"></span> Loading…</div>
+</div>
+
+<div class="row g-4">
+  <!-- Cost distribution -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Cost Distribution by Quality</div>
+      <div id="chart-cost-dist" style="height:320px"></div>
+    </div>
+  </div>
+  <!-- Avg cost heatmap -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Avg Cost — Method × Quality</div>
+      <div id="chart-heatmap" style="height:320px"></div>
+    </div>
+  </div>
+  <!-- Units saved scatter -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Units Saved vs Baseline Usage</div>
+      <div id="chart-scatter" style="height:320px"></div>
+    </div>
+  </div>
+  <!-- Rating bar -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Customer Rating Distribution</div>
+      <div id="chart-rating" style="height:320px"></div>
+    </div>
+  </div>
+  <!-- By method bar -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Avg Cost by Method</div>
+      <div id="chart-method" style="height:280px"></div>
+    </div>
+  </div>
+  <!-- By location bar -->
+  <div class="col-12 col-xl-6">
+    <div class="card p-3">
+      <div class="section-title">Avg Cost by Location</div>
+      <div id="chart-location" style="height:280px"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const COLORS = ['#1a6b4a','#27ae60','#2ecc71','#82e0aa','#a9dfbf'];
+const layout_base = { margin:{t:10,b:40,l:50,r:10}, paper_bgcolor:'transparent', plot_bgcolor:'transparent',
+  font:{family:'Segoe UI', color:'#1e2a23'}, xaxis:{gridcolor:'#d0ddd4'}, yaxis:{gridcolor:'#d0ddd4'} };
+
+async function loadDashboard() {
+  const [statsR, rawR] = await Promise.all([
+    axios.get('/api/dataset/stats'),
+    axios.get('/api/dataset/raw?limit=2500&offset=0'),
+  ]);
+  const stats = statsR.data;
+  const rows  = rawR.data.data;
+
+  // KPIs
+  const kpis = [
+    ['Dataset Rows', rawR.data.total],
+    ['Avg Cost', '₹' + Math.round(stats.cost.mean).toLocaleString('en-IN')],
+    ['Avg Temp Drop', stats.temp_drop.mean.toFixed(1) + '°C'],
+    ['Avg Units Saved', stats.units_saved.mean.toFixed(1) + ' kWh'],
+    ['High Rating Rate', (stats.high_rating_rate * 100).toFixed(1) + '%'],
+    ['Referral Rate', (stats.referral_rate * 100).toFixed(1) + '%'],
+  ];
+  document.getElementById('kpi-row').innerHTML = kpis.map(([l,v]) =>
+    `<div class="col-6 col-md-4 col-lg-2"><div class="card kpi-card p-3">
+      <div class="kpi-val">${v}</div><div class="kpi-label">${l}</div></div></div>`
+  ).join('');
+
+  // Cost distribution by quality
+  const qualities = [...new Set(rows.map(r => r.cool_roofing_quality))].sort();
+  Plotly.newPlot('chart-cost-dist', qualities.map((q, i) => ({
+    type: 'histogram', name: q, opacity: 0.75,
+    x: rows.filter(r => r.cool_roofing_quality === q).map(r => r.cool_roofing_cost),
+    marker: {color: COLORS[i]},
+  })), {...layout_base, barmode:'overlay', xaxis:{...layout_base.xaxis, title:'Cost (₹)'}}, {responsive:true});
+
+  // Heatmap method x quality
+  const methods  = [...new Set(rows.map(r => r.cool_roofing_method))].sort();
+  const avgMatrix = methods.map(m => qualities.map(q => {
+    const vals = rows.filter(r => r.cool_roofing_method===m && r.cool_roofing_quality===q).map(r=>r.cool_roofing_cost);
+    return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+  }));
+  Plotly.newPlot('chart-heatmap', [{type:'heatmap', z:avgMatrix, x:qualities, y:methods,
+    colorscale:'Blues', text:avgMatrix.map(r=>r.map(v=>v?Math.round(v).toLocaleString('en-IN'):'')),
+    texttemplate:'%{text}', showscale:true}],
+    {...layout_base, margin:{t:10,b:80,l:160,r:10}}, {responsive:true});
+
+  // Units saved scatter
+  const sample = rows.filter((_,i)=>i%3===0);
+  Plotly.newPlot('chart-scatter', qualities.map((q,i) => {
+    const qr = sample.filter(r=>r.cool_roofing_quality===q);
+    return {type:'scatter', mode:'markers', name:q, opacity:.6,
+      x: qr.map(r=>r.avg_units_before),
+      y: qr.map(r=>r.avg_units_before - r.avg_units_after),
+      marker:{color:COLORS[i], size:6}};
+  }), {...layout_base, xaxis:{...layout_base.xaxis, title:'Baseline Usage (kWh)'},
+       yaxis:{...layout_base.yaxis, title:'Units Saved (kWh)'}}, {responsive:true});
+
+  // Rating distribution
+  const ratingCounts = [1,2,3,4,5].map(r=>rows.filter(x=>x.customer_given_rating===r).length);
+  Plotly.newPlot('chart-rating', [{type:'bar', x:[1,2,3,4,5], y:ratingCounts,
+    marker:{color:['#e74c3c','#e67e22','#f1c40f','#2ecc71','#27ae60']}}],
+    {...layout_base, xaxis:{...layout_base.xaxis, title:'Rating'}, yaxis:{...layout_base.yaxis, title:'Count'}},
+    {responsive:true});
+
+  // By method
+  const byMethod = Object.entries(stats.by_method).sort((a,b)=>b[1]-a[1]);
+  Plotly.newPlot('chart-method', [{type:'bar', orientation:'h',
+    y: byMethod.map(x=>x[0]), x: byMethod.map(x=>Math.round(x[1])),
+    marker:{color:COLORS[0]}}],
+    {...layout_base, margin:{t:10,b:40,l:160,r:10}, xaxis:{...layout_base.xaxis, title:'Avg Cost (₹)'}},
+    {responsive:true});
+
+  // By location
+  const byLoc = Object.entries(stats.by_location).sort((a,b)=>b[1]-a[1]);
+  Plotly.newPlot('chart-location', [{type:'bar', orientation:'h',
+    y: byLoc.map(x=>x[0]), x: byLoc.map(x=>Math.round(x[1])),
+    marker:{color:COLORS[1]}}],
+    {...layout_base, margin:{t:10,b:40,l:120,r:10}, xaxis:{...layout_base.xaxis, title:'Avg Cost (₹)'}},
+    {responsive:true});
+}
+
+loadDashboard().catch(e => showToast('Dashboard load failed: ' + e.message, 'danger'));
+</script>
+{% endblock %}

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% set page = "batch" %}
+{% block title %}Batch — Cool Roofing{% endblock %}
+{% block content %}
+<h2 class="fw-bold mb-2" style="color:var(--primary)">Batch Prediction</h2>
+
+<!-- Mode tabs -->
+<ul class="nav nav-tabs mb-4" id="batchTab">
+  <li class="nav-item"><button class="nav-link active" data-mode="standard" onclick="switchMode('standard',this)">Standard (template CSV)</button></li>
+  <li class="nav-item"><button class="nav-link" data-mode="flexible" onclick="switchMode('flexible',this)">Any Dataset (auto-map columns)</button></li>
+</ul>
+
+<!-- Standard mode description -->
+<div id="desc-standard" class="alert alert-light border mb-3 small">
+  Upload a CSV matching the <strong>template format</strong> or use the built-in dataset.
+  All column names must match exactly.
+</div>
+<!-- Flexible mode description -->
+<div id="desc-flexible" class="alert alert-info border mb-3 small" style="display:none">
+  Upload <strong>any CSV</strong>. The app auto-maps columns by name (exact or alias).
+  Missing features are filled from <strong>training medians</strong> so predictions stay stable.
+  A mapping report shows what was matched and what was imputed.
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-4">
+    <div class="card p-4">
+      <div class="section-title">Data Source</div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Upload CSV</label>
+        <input type="file" class="form-control form-control-sm" id="csvfile" accept=".csv">
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="use_sample">
+        <label class="form-check-label small" for="use_sample">Use built-in dataset instead</label>
+      </div>
+
+      <div class="section-title mt-3">Row Selection</div>
+      <div class="mb-2">
+        <label class="form-label small fw-semibold">Start row (0-based)</label>
+        <input type="number" class="form-control form-control-sm" id="row_start" value="0" min="0">
+      </div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">End row (-1 = all)</label>
+        <input type="number" class="form-control form-control-sm" id="row_end" value="-1">
+      </div>
+
+      <div class="section-title">Column Filter</div>
+      <div class="mb-3">
+        <label class="form-label small fw-semibold">Show columns (comma-separated, blank = all)</label>
+        <input type="text" class="form-control form-control-sm" id="sel_cols"
+               placeholder="e.g. building_size,location_type">
+      </div>
+
+      <!-- Flexible mode extra file input -->
+      <div id="flex-upload" style="display:none">
+        <div class="section-title mt-3">Upload Any CSV</div>
+        <input type="file" class="form-control form-control-sm mb-2" id="flexfile" accept=".csv">
+        <div class="text-muted small">Columns auto-detected. Missing features filled from training data.</div>
+      </div>
+
+      <button class="btn btn-primary w-100 mt-3" id="run-btn" onclick="runBatch()">📊 Run Batch</button>
+      <a href="/api/batch/csv?row_start=0&row_end=199" class="btn btn-outline-secondary w-100 mt-2">
+        ⬇ Quick download (first 200 rows)
+      </a>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-8">
+    <div id="summary-cards" class="row g-3 mb-3" style="display:none"></div>
+    <div class="card p-3" id="result-card" style="display:none">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="section-title mb-0">Results</div>
+        <button class="btn btn-sm btn-outline-success" id="dl-btn">⬇ Download CSV</button>
+      </div>
+      <div style="max-height:520px;overflow:auto">
+        <table class="table table-sm table-hover mb-0" id="result-table">
+          <thead id="result-head"></thead>
+          <tbody id="result-body"></tbody>
+        </table>
+      </div>
+      <div class="text-muted small mt-2" id="result-info"></div>
+    </div>
+    <!-- Column mapping report (flexible mode) -->
+    <div id="mapping-card" class="card p-3 mb-3" style="display:none">
+      <div class="section-title">Column Mapping Report</div>
+      <div id="mapping-body"></div>
+    </div>
+
+    <div id="placeholder" class="card p-5 text-center text-muted">
+      <div style="font-size:3rem">📊</div>
+      <p class="mt-2">Upload a CSV or use the built-in dataset, then click Run Batch</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let _resultData = [];
+let _mode = 'standard';
+
+function switchMode(mode, btn) {
+  _mode = mode;
+  document.querySelectorAll('#batchTab .nav-link').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const isFlex = mode === 'flexible';
+  document.getElementById('desc-standard').style.display = isFlex ? 'none' : '';
+  document.getElementById('desc-flexible').style.display = isFlex ? '' : 'none';
+  document.getElementById('flex-upload').style.display   = isFlex ? '' : 'none';
+  // standard controls
+  ['csvfile','use_sample','sel_cols'].forEach(id => {
+    const el = document.getElementById(id)?.closest('.mb-3,.form-check');
+    if (el) el.style.display = isFlex ? 'none' : '';
+  });
+  document.getElementById('mapping-card').style.display = 'none';
+}
+
+function renderTable(data) {
+  if (!data.length) return;
+  const cols = Object.keys(data[0]);
+  document.getElementById('result-head').innerHTML =
+    '<tr>' + cols.map(c => `<th class="text-nowrap">${c}</th>`).join('') + '</tr>';
+  document.getElementById('result-body').innerHTML =
+    data.slice(0, 500).map(row =>
+      '<tr>' + cols.map(c => {
+        const v = row[c] ?? '';
+        const isPred = String(c).startsWith('pred_');
+        return `<td class="${isPred ? 'fw-semibold text-success' : ''}">${v}</td>`;
+      }).join('') + '</tr>'
+    ).join('');
+  document.getElementById('result-info').textContent =
+    `Showing ${Math.min(data.length, 500)} of ${data.length} rows`;
+}
+
+function renderSummary(d) {
+  const s = d.summary;
+  document.getElementById('summary-cards').style.display = '';
+  document.getElementById('summary-cards').innerHTML = [
+    ['Rows', d.rows],
+    ['Avg Cost', '₹' + Math.round(s.avg_cost).toLocaleString('en-IN')],
+    ['Avg Temp Drop', s.avg_temp_drop.toFixed(1) + '°C'],
+    ['Avg Units Saved', s.avg_units_saved.toFixed(1) + ' kWh'],
+    ['Avg Rating Prob', (s.avg_high_rating_prob * 100).toFixed(1) + '%'],
+  ].map(([l,v]) => `<div class="col-6 col-md-4 col-xl-auto">
+    <div class="card kpi-card p-2"><div class="kpi-val">${v}</div><div class="kpi-label">${l}</div></div></div>`
+  ).join('');
+}
+
+async function runBatch() {
+  const btn = document.getElementById('run-btn');
+  setLoading(btn, true);
+  try {
+    let d;
+    if (_mode === 'flexible') {
+      const file = document.getElementById('flexfile').files[0];
+      if (!file) { showToast('Upload a CSV first', 'warning'); setLoading(btn, false); return; }
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('row_start', document.getElementById('row_start').value);
+      fd.append('row_end', document.getElementById('row_end').value);
+      const r = await axios.post('/api/batch/flexible', fd);
+      d = r.data;
+      // Show mapping report
+      const mp = d.column_mapping;
+      document.getElementById('mapping-card').style.display = '';
+      document.getElementById('mapping-body').innerHTML = `
+        <div class="mb-2">
+          <span class="badge bg-success me-1">Coverage: ${mp.coverage_pct}%</span>
+          <span class="badge bg-secondary">${Object.keys(mp.mapped).length} mapped / ${Object.keys(mp.mapped).length + mp.missing_filled_with_training_median.length} total features</span>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-6">
+            <div class="small fw-semibold text-success mb-1">✅ Mapped columns</div>
+            <ul class="list-unstyled small mb-0">
+              ${Object.entries(mp.mapped).map(([k,v]) => `<li><code>${k}</code> ← <em>${v}</em></li>`).join('')}
+            </ul>
+          </div>
+          <div class="col-md-6">
+            <div class="small fw-semibold text-warning mb-1">⚠️ Missing → filled with training median/mode</div>
+            <ul class="list-unstyled small mb-0">
+              ${mp.missing_filled_with_training_median.map(f => `<li><code>${f}</code></li>`).join('') || '<li class="text-muted">None</li>'}
+            </ul>
+          </div>
+        </div>`;
+    } else {
+      const fd = new FormData();
+      const file = document.getElementById('csvfile').files[0];
+      const useSample = document.getElementById('use_sample').checked;
+      if (file && !useSample) fd.append('file', file);
+      fd.append('use_sample', useSample);
+      fd.append('row_start', document.getElementById('row_start').value);
+      fd.append('row_end', document.getElementById('row_end').value);
+      fd.append('selected_columns', document.getElementById('sel_cols').value);
+      const r = await axios.post('/api/batch', fd);
+      d = r.data;
+    }
+
+    _resultData = d.data;
+    renderSummary(d);
+    renderTable(d.data);
+    document.getElementById('placeholder').style.display = 'none';
+    document.getElementById('result-card').style.display = '';
+    showToast(`Done — ${d.rows} rows predicted`);
+  } catch(e) {
+    showToast('Error: ' + (e.response?.data?.detail || e.message), 'danger');
+  } finally { setLoading(btn, false); }
+}
+
+document.getElementById('dl-btn').addEventListener('click', () => {
+  if (!_resultData.length) return;
+  const cols = Object.keys(_resultData[0]);
+  const csv = [cols.join(','), ..._resultData.map(r => cols.map(c => JSON.stringify(r[c] ?? '')).join(','))].join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv])); a.download = 'predictions.csv'; a.click();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% set page = "home" %}
+{% block title %}Home — Cool Roofing Predictor{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12"><h2 class="fw-bold" style="color:var(--primary)">Cool Roofing Cost &amp; Impact Predictor</h2>
+  <p class="text-muted">Predicts five installation outcomes from pre-installation building details.</p></div>
+</div>
+
+{% if stats %}
+<div class="row g-3 mb-4">
+  {% for label, val in [('Dataset rows', stats.rows), ('Avg Install Cost', '₹'+stats.avg_cost), ('Avg Temp Drop', stats.avg_temp_drop+'°C'), ('Avg Units Saved', stats.avg_units_saved+' kWh'), ('High Rating Rate', stats.high_rating_pct)] %}
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card kpi-card p-3">
+      <div class="kpi-val">{{ val }}</div>
+      <div class="kpi-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-md-6">
+    <div class="card p-4 h-100">
+      <div class="section-title">Models Loaded</div>
+      {% if models_loaded %}
+        {% for m in models_loaded %}<span class="badge me-1 mb-1" style="background:var(--accent)">{{ m }}</span>{% endfor %}
+      {% else %}
+        <div class="alert alert-warning mb-0">No models found. Run the notebook first.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
+    <div class="card p-4 h-100">
+      <div class="section-title">Prediction Tasks</div>
+      <table class="table table-sm table-borderless mb-0">
+        <thead><tr><th>Task</th><th>Type</th><th>Metric</th></tr></thead>
+        <tbody>
+          <tr><td>Installation Cost</td><td>Regression</td><td>MAE / R²</td></tr>
+          <tr><td>Roof Temperature Drop</td><td>Regression</td><td>MAE / R²</td></tr>
+          <tr><td>Electricity Units Saved</td><td>Regression</td><td>MAE / R²</td></tr>
+          <tr><td>High Customer Rating</td><td>Classification</td><td>Accuracy / AUC</td></tr>
+          <tr><td>Customer Referral</td><td>Classification</td><td>Accuracy / F1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for href, icon, title, desc in [('/predict','🔮','Single Predict','Enter one building and get all 5 predictions instantly'),('/batch','📊','Batch Predict','Upload CSV, select rows & columns, download results'),('/dashboard','📈','Dashboard','Interactive dataset analysis with live charts'),('/recommend','🏆','Recommend','Score all method×quality combos and rank them'),('/docs','📚','API Docs','FastAPI auto-generated Swagger UI')] %}
+  <div class="col-6 col-lg-4 col-xl-2">
+    <a href="{{ href }}" class="text-decoration-none">
+      <div class="card p-3 text-center h-100" style="transition:.2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-size:2rem">{{ icon }}</div>
+        <div class="fw-bold mt-1">{{ title }}</div>
+        <div class="text-muted small mt-1">{{ desc }}</div>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
